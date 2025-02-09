@@ -1,15 +1,29 @@
-name: Post welcome comment
-on: 
-  pull_request:
-    types: [opened]
-permissions:
-  pull-requests: write
+name: Check pull request source branch and post welcome comment
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - edited
+
 jobs:
-  build:
-    name: Post welcome comment
+  check-branches:
     runs-on: ubuntu-latest
     steps:
-      - run: gh pr comment $PR_URL --body "Welcome to the repository!"
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Check branches
+        run: |
+          echo "Running check branches"
+          if [[ ! ${{ github.head_ref }} =~ qa$|QA$ ]] && [ ${{ github.base_ref }} == "main" ]; then
+            echo "Merge requests to main branch are only allowed from branches ending with 'qa' or 'QA'."
+            exit 1
+          fi
+
+      - name: Post welcome comment
+        run: |
+          gh pr comment ${{ github.event.pull_request.html_url }} --body "Welcome to the repository!"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_URL: ${{ github.event.pull_request.html.url }}
